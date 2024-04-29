@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js Ear Model</title>
+    <style>
+        /* Ensure the renderer takes up the whole viewport */
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+    <!-- Include Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include dat.gui for interactive controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+</head>
+<body>
+    <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Camera Position
+    camera.position.set(10, 0, 15);  // proper camera positioning
+    camera.lookAt(scene.position);   // Ensure the camera is facing the scene
+    
+    // Add lighting to the scene
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft ambient light
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // Directional light
+    directionalLight.position.set(1, 1, 1); // Proper light direction
+    scene.add(directionalLight);
+
+   // Points to define the shape of the outer ear (pinna)
+    const pinnaPoints = [
+        new THREE.Vector3(0, -2, 0),  // Start point at the bottom
+        new THREE.Vector3(1, 0, 0),   // Curve outward
+        new THREE.Vector3(2, 3, 0),   // Curve upward
+        new THREE.Vector3(1, 5, 0),   // Top curve
+        new THREE.Vector3(0, 6, 0)    // End point at the top
+    ];
+
+    // Create the lathe geometry for the outer ear
+    const pinnaGeometry = new THREE.LatheGeometry(pinnaPoints, 64, 0, Math.PI); // More segments for a smooth curve
+    const pinnaMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffcc99, // Light skin color for outer ear
+        side: THREE.DoubleSide, // Ensure it can be seen from both sides
+        transparent: true,
+        opacity: 0.85,  
+    });
+    const pinna = new THREE.Mesh(pinnaGeometry, pinnaMaterial);
+
+    // Adjust the position and orientation to align with the existing ear model
+    pinna.position.set(-4.5, -1.5, 0.6);  
+    pinna.rotation.y = 2*Math.PI/4;
+    pinna.scale.set(1.4,1.2,1.5);
+
+    // Add the outer ear (pinna) to the scene
+    scene.add(pinna);
+
+
+    // Ear canal with slight curve and proper positioning
+    const earCanalPoints = [];  // control points for the curved geometry
+    earCanalPoints.push(new THREE.Vector3(-2.5, 0.05, 0));  // Start point
+    earCanalPoints.push(new THREE.Vector3(0.7, -0.1, 0));  // Curve point
+    earCanalPoints.push(new THREE.Vector3(4, 0.3, 0));  // Curve point
+    earCanalPoints.push(new THREE.Vector3(6.43, -0.08, 0));  // End point
+    
+    const earCanalCurve = new THREE.CatmullRomCurve3(earCanalPoints);  // Create a curve
+
+    const earCanalGeometry = new THREE.TubeGeometry(earCanalCurve, 32, 0.5, 32, false);  // Create the tube
+    const earCanalMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa00 });  // Material for ear canal
+    const earCanal = new THREE.Mesh(earCanalGeometry, earCanalMaterial);
+
+    scene.add(earCanal);  // Add to the scene
+
+    // Middle ear cavity as a box geometry
+    const middleEarCavity = new THREE.Mesh(
+        new THREE.CircleGeometry(1.3, 32),
+        new THREE.MeshStandardMaterial({ color: 0x666666, transparent: true, opacity: 0.3 })
+    );
+    middleEarCavity.position.set(6.7, 0, -1.2);
+    scene.add(middleEarCavity);
+
+    // Eustachian tube as a cylinder geometry
+    const eustachianTube = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.26, 0.2, 4),
+        new THREE.MeshStandardMaterial({ color: 0xffaa00, transparent: true, opacity: 6 })
+    );
+    eustachianTube.rotation.z = Math.PI / 7; // Rotate to align with the bottom of the middle ear
+    eustachianTube.position.set(8.45, -2.8, 0); // Position to connect with the middle ear cavity
+    scene.add(eustachianTube);
+
+    const eustachianTubeBlock = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.1, 0.2),
+        new THREE.MeshStandardMaterial({ color: 0xff0000 })
+    );
+    eustachianTubeBlock.position.set(7.83, -1.4, 0.2);
+    eustachianTubeBlock.rotation.z = Math.PI / 7;
+    eustachianTubeBlock.visible = false;
+    scene.add(eustachianTubeBlock);
+
+    // Middle ear with tympanic membrane and ossicles structure
+    const tympanicMembraneOuter = new THREE.Mesh(
+        new THREE.CircleGeometry(0.54, 32),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide })
+    );
+    tympanicMembraneOuter.position.set(6.64, -0.09, 0);  // Positioned at the end of the ear canal
+    tympanicMembraneOuter.rotateY(-3*Math.PI/8);
+    tympanicMembraneOuter.rotateX(Math.PI/24);
+    scene.add(tympanicMembraneOuter);
+    
+    const tympanicMembraneInner = new THREE.Mesh(
+        new THREE.CircleGeometry(0.54, 32),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide })
+    );
+    tympanicMembraneInner.position.set(6.6, -0.09, 0);  // Positioned at the end of the ear canal
+    tympanicMembraneInner.rotateY(-3*Math.PI/8);
+    tympanicMembraneInner.rotateX(Math.PI/24);
+    scene.add(tympanicMembraneInner);
+
+    const tympanicMembraneBulge = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 32, 16, 0, Math.PI/2, 0, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide })
+    );
+    tympanicMembraneBulge.position.set(6.65, -0.09, 0);  // Positioned at the end of the ear canal
+    tympanicMembraneBulge.rotateY(-3*Math.PI/8);
+    tympanicMembraneBulge.rotateX(Math.PI/24);
+    tympanicMembraneBulge.scale.set(1, 1, 0.2);  // Default scale
+    scene.add(tympanicMembraneBulge);
+    
+    const malleus = new THREE.Mesh(
+        new THREE.ConeGeometry(0.5, 0.45, 32),
+        new THREE.MeshStandardMaterial({ color: 0xff0000 })
+    );
+    malleus.rotateZ(-3*Math.PI/7.5);  // Malleus represented as a cone
+    
+    const incus = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.1, 0.5, 32),
+        new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+    );  // Incus represented as a thin cylinder
+    incus.rotateZ(-3*Math.PI/8);
+    
+    const stapes = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.055, 0.56, 32),
+        new THREE.MeshStandardMaterial({ color: 0x0000ff })
+    );  // Stapes represented as a smaller cylinder
+    stapes.rotateZ(-3*Math.PI/4);
+
+    malleus.position.set(7.05, 0.08, 0);  // Proper positioning
+    incus.position.set(7.43, 0.28, 0);  // Position after malleus
+    stapes.position.set(7.87, 0.15, 0);  // Position after incus
+
+    scene.add(malleus);
+    scene.add(incus);
+    scene.add(stapes);
+
+    /// Semicircular canals
+    const semicircularCanals = new THREE.Mesh(
+        new THREE.TorusKnotGeometry(0.63, 0.08, 200, 8, 9, 12),
+        new THREE.MeshStandardMaterial({ color: 0x00FFFF })
+    );
+    semicircularCanals.position.set(8.26, 1.06, -1);
+    semicircularCanals.scale.set(1.1, 1.3, 1);
+    semicircularCanals.rotateY(Math.PI/4);
+    scene.add(semicircularCanals);
+
+    // Create a cochlea with multiple spirals
+    const cochlea = new THREE.Group();
+
+    // Main spiral for the cochlea
+    const primarySpiral = new THREE.Mesh(
+        new THREE.TorusKnotGeometry(0.6, 0.15, 200, 16, 10, 3), 
+        new THREE.MeshStandardMaterial({ color: 0xFF00FF, transparent: true, opacity: 0.7 })
+    );
+
+    // Adjust the position to align with the rest of the ear model
+    primarySpiral.position.set(8.65, 0, -1);
+    primarySpiral.scale.set(1.1, 1.1, 1.1);
+    primarySpiral.rotateZ(Math.PI / 2); // Correct the orientation
+    cochlea.add(primarySpiral);
+
+    // Add the cochlea group to the scene
+    scene.add(cochlea);
+
+    // Add wax particles based on the build-up value
+    const waxParticles = []; // Store references to wax particles
+
+    // Function to generate consistent random values based on a seed
+    function seededRandom(seed) {
+        let x = Math.sin(seed) * 10000;
+        return x - Math.floor(x); // Keeping the fraction part for consistent randomness
+    }
+    // Function to generate random positions on the outer surface of the tube
+    function generateRandomPointOnTube(curve, index, offset, seed) {
+        const randomValue = seededRandom(seed + index); // Generate a consistent random value based on the seed
+        const t = randomValue; // Use the random value to determine the position on the curve
+
+        const point = curve.getPoint(t); // Point on the curve
+        const tangent = curve.getTangent(t).normalize(); // Tangent direction
+        const perpendicular = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(0, -0.5, 1)).normalize(); // Perpendicular vector
+        const normal = perpendicular.cross(tangent).normalize(); // Normal direction 
+        return point.clone().add(perpendicular.multiplyScalar(offset));
+        }
+
+    // Create and add wax particles to the scene
+    function createWaxParticles(waxBuildUp) {
+        // Clear existing wax particles from the scene
+        waxParticles.forEach((particle) => scene.remove(particle));
+        waxParticles.length = 0;
+
+        // Create new wax particles based on the build-up value
+        for (let i = 0; i < waxBuildUp; i++) {
+            const seed = i+9904866;
+            const waxPosition = generateRandomPointOnTube(earCanalCurve, i, 0.5, seed); // Position on the surface
+            const wax = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3), // Small sphere for wax particle
+            new THREE.MeshStandardMaterial({ color: 0x964B00 }) // Brown color for wax
+            );
+
+            wax.position.copy(waxPosition); // Set position to the generated point
+            waxParticles.push(wax); // Store the wax particle
+            scene.add(wax); // Add the wax particle to the scene
+        }
+    }
+
+
+    class MovingSineWave {
+    constructor(amplitude, frequency, speed, startPosition, endPosition) {
+        this.amplitude = amplitude; // Base amplitude
+        this.frequency = frequency; // Frequency of the sine wave
+        this.speed = speed; // Speed of the wave
+        this.position = startPosition; // Starting point
+        this.startPosition = startPosition;
+        this.endPosition = endPosition;
+        this.geometry = new THREE.BufferGeometry(); // Geometry for the sine wave
+        this.material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 }); // Line material
+        this.numPoints = 100; // Number of points in the sine wave
+        this.fadeLength = 1; // Length of the fade at the end
+    }
+
+    update() {
+        this.position += this.speed; // Move the wave to the right
+
+        if (this.position > this.endPosition) {
+        this.position = this.startPosition; // Reset to start from the left
+        }
+
+        const points = [];
+        const totalLength = this.endPosition - this.startPosition;
+
+        for (let i = 0; i < this.numPoints; i++) {
+        const t = (i / (this.numPoints - 1)); // Fraction along the distance
+        const x = this.position - totalLength + t * totalLength; // Adjust x-axis based on speed
+
+        let y = 0.25 * 0.175 * this.amplitude * Math.sin(x * this.frequency); // Base waveform
+
+        // Smooth fade-out near the tympanic membrane to avoid abrupt transitions
+        if (x >= this.endPosition - this.fadeLength && x < this.endPosition) {
+            const fadeFactor = 1 - (x - (this.endPosition - this.fadeLength)) / this.fadeLength;
+            y *= fadeFactor; // Apply fading to smooth out the transition
+        }
+
+        points.push(new THREE.Vector3(x, y, 2)); // Add points to the wave
+        }
+
+        this.geometry.setFromPoints(points); // Update the geometry with the new points
+    }
+
+    getLine() {
+        return new THREE.Line(this.geometry, this.material); // Return the line object
+    }
+    }
+
+
+    // Create a sine wave with starting and ending positions
+    const sineWave = new MovingSineWave(
+    1, // Initial amplitude
+    1, // Frequency
+    0.15, // Speed
+    -5, // Start position outside the pinna
+    7.2 // End position at the tympanic membrane
+    );
+
+    scene.add(sineWave.getLine()); 
+
+    // Wax build-up threshold above which sound intensity is reduced
+    const waxThreshold = 7;
+
+    // Function to determine the scaling factor based on wax build-up
+    function waxScalingFactor(waxValue) {
+        if (waxValue > waxThreshold) {
+            return 1 - (waxValue - waxThreshold) / 5.5; // Scale down proportionally after the threshold
+        } else {
+            return 1; // No scaling if wax build-up is below the threshold
+        }
+    }
+    
+    // Create a canvas for the warning message
+    const warningCanvas = document.createElement('canvas'); // Create a new canvas
+    warningCanvas.width = 512; // Larger width for longer text
+    warningCanvas.height = 128; // Height can remain the same
+    const ctx = warningCanvas.getContext('2d'); // Get the canvas context
+
+    // Define text style and position
+    ctx.fillStyle = 'red'; // Text color
+    ctx.font = '40px Arial'; // Larger font size
+    ctx.textAlign = 'center'; // Center the text horizontally
+
+    // Draw the warning message in the middle of the canvas
+    ctx.fillText('Sound Intensity is too high!', warningCanvas.width / 2, warningCanvas.height / 2); // Centered text
+
+    // Create a texture from the canvas
+    const warningTexture = new THREE.CanvasTexture(warningCanvas); // Create the texture
+    const warningMaterial = new THREE.SpriteMaterial({ map: warningTexture, transparent: true }); // Sprite material with texture
+
+    // Create a sprite to display the warning message
+    const warningSprite = new THREE.Sprite(warningMaterial); // Create a sprite with the material
+    warningSprite.scale.set(10, 3, 1); // Adjust the sprite scale to ensure proper size
+    warningSprite.position.set(-2, 8, 0); // Position the warning above the scene
+
+    // Initially hide the warning message
+    warningSprite.visible = false; // Set to invisible initially
+
+    // Add the warning sprite to the scene
+    scene.add(warningSprite);
+
+    // Function to check if the warning should be visible based on sound intensity
+    function checkSoundIntensity() {
+        if (soundIntensity.value > 6) {
+            warningSprite.visible = true; // Show the warning if sound intensity is too high
+        } else {
+            warningSprite.visible = false; // Hide the warning otherwise
+        }
+    }
+
+    // Function to create a label with a connecting line
+    function createLabelWithLine(labelText, labelPosition, earPosition) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; // Width for longer text
+        canvas.height = 128; // Height for clarity
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white'; // Text color
+        ctx.font = '40px Arial'; // Font size
+        ctx.textAlign = 'center'; // Centered text
+        ctx.fillText(labelText, canvas.width / 2, canvas.height / 2); // Centered text on canvas
+
+        const texture = new THREE.CanvasTexture(canvas); // Create the texture from the canvas
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true }); // Sprite material with texture
+
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(6.3, 1.5, 1); // Scale for proper text display
+        sprite.position.copy(labelPosition); // Position the label
+
+        // Create a line connecting the label to the ear part
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([earPosition, labelPosition]);
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff }); // Line color
+
+        const line = new THREE.Line(lineGeometry, lineMaterial); // Create the line
+        scene.add(sprite); // Add the label sprite
+        scene.add(line); // Add the connecting line
+
+        return { sprite, line }; // Return the label and line
+    }
+
+
+    // Define the label positions and texts
+    const labelData = [
+        { text: 'Tympanic membrane', labelPosition: new THREE.Vector3(3, 4, 0), earPosition: new THREE.Vector3(6.64, -0.1, 0) },
+        { text: 'Malleus', labelPosition: new THREE.Vector3(6, 1.5, 0), earPosition: new THREE.Vector3(7.05, 0.08, 0) },
+        { text: 'Incus', labelPosition: new THREE.Vector3(7, 2, 0), earPosition: new THREE.Vector3(7.43, 0.28, 0) },
+        { text: 'Stapes', labelPosition: new THREE.Vector3(8, 3, 0), earPosition: new THREE.Vector3(7.87, 0.15, 0) },
+        { text: 'Cochlea', labelPosition: new THREE.Vector3(11, 0.5, 0), earPosition: new THREE.Vector3(8.65, 0, -1) },
+        { text: 'Semicircular canals', labelPosition: new THREE.Vector3(11, 2, 0), earPosition: new THREE.Vector3(8.26, 1.06, -1) },
+        { text: 'Eustachian tube', labelPosition: new THREE.Vector3(11.5, -2, 0), earPosition: new THREE.Vector3(7.83, -1.4, 0.2) },
+        { text: 'Ear canal', labelPosition: new THREE.Vector3(-1, 5.5, 0), earPosition: new THREE.Vector3(0.7, -0.1, 0) },
+        { text: 'Pinna', labelPosition: new THREE.Vector3(-4, 7.5, 0), earPosition: new THREE.Vector3(-4.5, 2.5, 0.6) },
+        { text: 'Outer Ear', labelPosition: new THREE.Vector3(-5, -7, 0), earPosition: new THREE.Vector3(-5, -7, 0) },
+        { text: 'Middle Ear', labelPosition: new THREE.Vector3(4, -6, 0), earPosition: new THREE.Vector3(4, -6, 0) },
+        { text: 'Inner Ear', labelPosition: new THREE.Vector3(10.5, -5, 0), earPosition: new THREE.Vector3(10.5, -5, 0) },
+    ];
+
+    // Create an array to store the label sprites and lines
+    const labels = labelData.map((label) => createLabelWithLine(label.text, label.labelPosition, label.earPosition));
+
+    // Function to control label visibility in the animation loop
+    function updateLabelVisibility() {
+        labels.forEach(({ sprite, line }) => {
+            const visibility = showLabels.visible; // Check the checkbox value
+            sprite.visible = visibility; // Set label visibility
+            line.visible = visibility; // Set line visibility
+        });
+    }
+
+    // Interactive sliders and GUI
+    const gui = new dat.GUI();
+    const soundIntensity = { value: 1 };  // Default sound intensity
+    gui.add(soundIntensity, 'value', 0.1, 10).name('Sound Intensity');  // Slider for sound intensity
+
+    const airPressure = { value: 3 };  // Default air pressure
+    gui.add(airPressure, 'value', -5, 10).name('Air Pressure');  // Slider for air pressure
+    
+    const waxBuildUp = { value: 0 };  // Default wax build-up
+    gui.add(waxBuildUp, 'value', 0, 10).name('Wax Build-Up');  // Slider for wax build-up
+    
+    const eustachianTubeBlocked = { blocked: false };  // Eustachian tube blockage checkbox
+    gui.add(eustachianTubeBlocked, 'blocked').name('Eustachian Tube Blocked');  // Checkbox for blockage
+
+    // dat.GUI setup for controlling visibility of labels
+    const showLabels = { visible: false }; // Default value
+    const labelVisibilityControl = gui.add(showLabels, 'visible').name('Show Labels'); // Add to GUI
+
+
+   
+    // Animation loop with proper rendering
+    function animate() {
+
+        updateLabelVisibility(); // Update label visibility based on GUI control
+
+        // Simulate ossicle vibration
+        const vibrate = Math.sin(Date.now() * 0.1) * 0.007;  // Vibration effect
+        // Show or hide the warning message based on sound intensity
+        checkSoundIntensity(); // Check if the warning should be visible
+        // Get the scaling factor based on the wax build-up
+        const waxScale = waxScalingFactor(waxBuildUp.value);
+
+        if (Math.abs(airPressure.value) < 0.1) {  // If air pressure is very low, no vibration in oscilles
+            malleus.position.set(7.05, 0.08, 0); 
+            incus.position.set(7.43, 0.28, 0);  
+            stapes.position.set(7.87, 0.15, 0);  
+            tympanicMembraneOuter.position.set(6.64, -0.09, 0);
+            tympanicMembraneInner.position.set(6.6, -0.09, 0);
+        } else{
+            malleus.position.x += vibrate;  // Malleus vibrates
+            incus.position.x += vibrate;  // Incus vibrates
+            stapes.position.x += vibrate;  // Stapes vibrates
+
+            malleus.position.y += vibrate * soundIntensity.value * waxScale;  // Malleus vibrates
+            incus.position.y += vibrate * soundIntensity.value * waxScale;  // Incus vibrates
+            stapes.position.y += vibrate * soundIntensity.value* waxScale;  // Stapes vibrates
+
+            tympanicMembraneInner.position.x += vibrate * soundIntensity.value * waxScale;  
+            tympanicMembraneOuter.position.x += vibrate * soundIntensity.value * waxScale;  // vibrates the tympanic membrane
+        }
+
+        if(airPressure.value >= 7 && eustachianTubeBlocked.blocked){
+            tympanicMembraneBulge.scale.set(1, 1, airPressure.value * -0.1/2.3);  // Adjust the bulge scale with air pressure
+        }
+        else if(airPressure.value <= -2 && eustachianTubeBlocked.blocked){
+            tympanicMembraneBulge.scale.set(1, 1, 0.2+airPressure.value * -0.1);  // Adjust the bulge scale with air pressure
+        }
+        else{
+            tympanicMembraneBulge.scale.set(1, 1, 0.2);
+        }
+        
+        if (eustachianTubeBlocked.blocked) {
+            eustachianTubeBlock.visible = true;  // Show the red block when the checkbox is checked
+        } else {
+            eustachianTubeBlock.visible = false;  // Hide it when not checked
+        }
+        createWaxParticles(waxBuildUp.value);
+        
+        // Check if air pressure is close to zero (a small range to account for rounding errors)
+        if (Math.abs(airPressure.value) < 0.1) {  // If air pressure is very low, remove the wave
+            sineWave.geometry.setFromPoints([]);  // Clear the wave geometry
+        } else {
+            sineWave.amplitude = soundIntensity.value * waxScale;
+            sineWave.frequency = (soundIntensity.value / 1.5) * waxScale; // Adjust frequency based on sound intensity
+            sineWave.update();  // Update the wave geometry
+        }
+        
+        renderer.render(scene, camera);  // Render the scene
+        requestAnimationFrame(animate);
+    }
+
+    animate();  // Start the animation loop
+    </script>
+</body>
+</html>
